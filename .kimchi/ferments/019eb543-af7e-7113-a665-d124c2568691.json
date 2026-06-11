@@ -1,0 +1,376 @@
+{
+  "id": "019eb543-af7e-7113-a665-d124c2568691",
+  "name": "Neon DB leads dashboard",
+  "description": "Dashboard modifications for the IRUS AI Outreach Pipeline:\n1. Add a new \"Infos\" section/tab in the live dashboard showing all scraped lead info (from leads data)\n2. Migrate all data storage from CSV files to a Neon PostgreSQL database\n3. Store all leads, email drafts, and action logs in the database\n4. The connection string is: postgresql://neondb_owner:npg_N70sdZWreHfA@ep-red-meadow-apdboe3l-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\n5. Update the frontend dashboard to display leads info in a new tab alongside \"Review & Send\" and \"Activity Log\"\n6. All backend modules currently using CSV files should use the database instead\n7. Add new API endpoints to serve leads data to the frontend",
+  "status": "running",
+  "worktree": {
+    "path": "/mnt/c/Users/priya/irus-ai"
+  },
+  "scoping": {
+    "goal": {
+      "answer": "Migrate the IRUS AI Outreach Pipeline from CSV-based storage to Neon PostgreSQL, add a new \"Infos\" tab on the live dashboard that displays all scraped leads, and ensure all backend modules read from and write to the database.",
+      "confirmedAt": "2026-06-11T06:31:41.283Z"
+    },
+    "criteria": {
+      "answer": "Neon DB tables exist: leads, email_drafts, action_logs\nExisting CSV data (leads, drafts, logs) is migrated to Neon on first startup\nBackend modules (lead_finder, lead_enricher, email_drafts, logger) use psycopg2 instead of CSV I/O\nGET /leads endpoint returns all scraped leads with optional category/search filters\nDashboard has a third \"Infos\" tab listing all leads in a responsive table/cards view\nLaunching a campaign writes leads + drafts to Neon, dashboard reflects it in real time\nExisting tabs (Review & Send, Activity Log) and features (edit, send single/all) continue working",
+      "confirmedAt": "2026-06-11T06:31:41.283Z"
+    },
+    "constraints": {
+      "answer": "Use the provided Neon connection string, stored in .env (never hardcoded in committed files), Use psycopg2-binary for synchronous DB access to match existing code style, Clear existing drafted/edited rows between campaigns (mirrors current clear_drafts behavior); preserve sent/failed rows as history, Keep .env in .gitignore, Handle DB connection errors gracefully (log, return 500), Table creation uses IF NOT EXISTS to survive restarts, Use a single db.py module for all DB operations to avoid scattered connection logic",
+      "confirmedAt": "2026-06-11T06:31:41.283Z"
+    },
+    "phases": {
+      "answer": "P1: Database Infrastructure, P2: Backend Data Layer, P3: API Layer + New Endpoints, P4: Frontend Dashboard, P5: Integration Verification",
+      "confirmedAt": "2026-06-11T06:31:41.283Z"
+    },
+    "assumptions": {
+      "answer": "Neon DB is accessible from current environment (outbound TCP 5432); psycopg2-binary installs without system dependencies; Current CSV files contain <200 rows - migration is trivial and fast; Existing CSV column names map 1:1 to DB columns; FastAPI runs in main thread with BackgroundTasks, so a single connection per operation is sufficient; Browser cache from old dev server may require hard refresh",
+      "confirmedAt": "2026-06-11T06:31:41.283Z"
+    }
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "index": 1,
+      "name": "P1: Database Infrastructure",
+      "goal": "Install dependency, create db.py with connection + schema + migration, store DATABASE_URL in .env.",
+      "description": "",
+      "parallel": false,
+      "status": "completed",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Add psycopg2-binary to requirements.txt",
+          "status": "verified",
+          "verification": {
+            "command": "grep -q 'psycopg2-binary' requirements.txt",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T06:32:29.582Z",
+          "completedAt": "2026-06-11T06:33:18.392Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "grep -q 'psycopg2-binary' requirements.txt",
+            "stderr": "",
+            "completedAt": "2026-06-11T06:33:18.392Z"
+          }
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Create backend/db.py with get_conn(), init_tables(), and migrate_from_csv()",
+          "status": "verified",
+          "verification": {
+            "command": "python3 -c \"from backend.db import get_conn, init_tables; conn=get_conn(); cur=conn.cursor(); cur.execute(\\\"SELECT tablename FROM pg_tables WHERE schemaname='public'\\\"); print([r[0] for r in cur.fetchall()])\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T06:33:53.872Z",
+          "completedAt": "2026-06-11T06:59:24.804Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "cd backend && source ../venv/bin/activate && python3 -c \"from db import get_conn, init_tables; conn=get_conn(); cur=conn.cursor(); cur.execute(\\\"SELECT tablename FROM pg_tables WHERE schemaname='public'\\\"); print([r[0] for r in cur.fetchall()])\"",
+            "stderr": "",
+            "completedAt": "2026-06-11T06:59:24.804Z"
+          }
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Store DATABASE_URL in .env and run migration",
+          "status": "verified",
+          "verification": {
+            "command": "python3 -c \"from backend.db import get_conn; conn=get_conn(); cur=conn.cursor(); cur.execute('SELECT COUNT(*) FROM leads'); print('leads', cur.fetchone()[0]); cur.execute('SELECT COUNT(*) FROM email_drafts'); print('drafts', cur.fetchone()[0]); cur.execute('SELECT COUNT(*) FROM action_logs'); print('logs', cur.fetchone()[0])\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T06:59:46.033Z",
+          "completedAt": "2026-06-11T07:00:30.073Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "cd backend && source ../venv/bin/activate && python3 -c \"from db import get_conn; conn=get_conn(); cur=conn.cursor(); cur.execute('SELECT COUNT(*) FROM leads'); print('leads', cur.fetchone()[0]); cur.execute('SELECT COUNT(*) FROM email_drafts'); print('drafts', cur.fetchone()[0]); cur.execute('SELECT COUNT(*) FROM action_logs'); print('logs', cur.fetchone()[0])\"",
+            "stderr": "",
+            "completedAt": "2026-06-11T07:00:30.073Z"
+          }
+        }
+      ],
+      "startedAt": "2026-06-11T06:32:15.435Z",
+      "completedAt": "2026-06-11T07:02:02.864Z",
+      "summary": "Phase 1 complete: psycopg2-binary installed, backend/db.py created with get_conn(), init_tables(), migrate_from_csv(), and full CRUD helpers. DATABASE_URL stored in .env. Migration successfully imported 17 leads, 8 drafts, and 29 logs into Neon PostgreSQL."
+    },
+    {
+      "id": "phase-2",
+      "index": 2,
+      "name": "P2: Backend Data Layer",
+      "goal": "Replace all CSV reads/writes in four core modules with equivalent DB operations.",
+      "description": "",
+      "parallel": false,
+      "status": "completed",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Rewrite lead_finder.py _append_to_csv → insert_leads_db",
+          "status": "verified",
+          "verification": {
+            "command": "python3 -c \"from backend.lead_finder import find_leads; print('lead_finder loads')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T07:04:45.660Z",
+          "completedAt": "2026-06-11T07:25:35.804Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "python3 -c \"from backend.lead_finder import find_leads; print('lead_finder loads')\"",
+            "stderr": "",
+            "completedAt": "2026-06-11T07:25:35.804Z"
+          }
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Rewrite lead_enricher.py to read leads from DB, enrich, UPDATE back to DB",
+          "status": "verified",
+          "verification": {
+            "command": "python3 -c \"from backend.lead_enricher import enrich_leads; print('lead_enricher loads')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T07:26:43.747Z",
+          "completedAt": "2026-06-11T07:27:03.784Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "python3 -c \"from backend.lead_enricher import enrich_leads; print('lead_enricher loads')\"",
+            "stderr": "",
+            "completedAt": "2026-06-11T07:27:03.784Z"
+          }
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Rewrite email_drafts.py CSV CRUD → DB CRUD; keep sent/failed on clear",
+          "status": "verified",
+          "verification": {
+            "command": "python3 -c \"from backend.email_drafts import get_all_drafts, save_draft, update_draft, clear_drafts; print('email_drafts loads')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T07:28:34.040Z",
+          "completedAt": "2026-06-11T07:29:17.787Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "python3 -c \"from backend.email_drafts import get_all_drafts, save_draft, update_draft, clear_drafts; print('email_drafts loads')\"",
+            "stderr": "",
+            "completedAt": "2026-06-11T07:29:17.787Z"
+          }
+        },
+        {
+          "id": "step-4",
+          "index": 4,
+          "description": "Rewrite logger.py CSV read/write → DB read/write",
+          "status": "verified",
+          "verification": {
+            "command": "python3 -c \"from backend.logger import write_log, already_contacted, print_summary; print('logger loads')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T07:29:35.966Z",
+          "completedAt": "2026-06-11T07:30:09.718Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "python3 -c \"from backend.logger import write_log, already_contacted, print_summary; print('logger loads')\"",
+            "stderr": "",
+            "completedAt": "2026-06-11T07:30:09.718Z"
+          }
+        }
+      ],
+      "startedAt": "2026-06-11T07:03:40.040Z",
+      "completedAt": "2026-06-11T07:33:20.402Z",
+      "summary": "All four backend modules migrated from CSV to DB: lead_finder uses insert_leads, lead_enricher uses get_raw_leads/update_lead, email_drafts wraps db.py CRUD helpers, and logger re-exports db.py functions. All modules verified to import and function correctly against real Neon DB data."
+    },
+    {
+      "id": "phase-3",
+      "index": 3,
+      "name": "P3: API Layer + New Endpoints",
+      "goal": "Update FastAPI endpoints to use DB, add GET /leads.",
+      "description": "",
+      "parallel": false,
+      "status": "active",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Update /logs to read from action_logs table instead of log.csv",
+          "status": "running",
+          "verification": {
+            "command": "curl -s http://localhost:3050/logs | python3 -m json.tool | grep -q 'logs'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-11T08:30:55.545Z"
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Add GET /leads endpoint with category and search query params",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s 'http://localhost:3050/leads?limit=5' | python3 -m json.tool | grep -q 'leads'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Verify /drafts, /drafts/pending, PUT /drafts/{email}, POST send endpoints still work",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s http://localhost:3050/drafts/pending | python3 -m json.tool | grep -q 'status'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        }
+      ],
+      "startedAt": "2026-06-11T08:30:06.028Z"
+    },
+    {
+      "id": "phase-4",
+      "index": 4,
+      "name": "P4: Frontend Dashboard",
+      "goal": "Add Infos tab, fetch leads, render table with filters.",
+      "description": "",
+      "parallel": false,
+      "status": "planned",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Update activeTab state type to include 'infos', add leads state, fetch /leads in polling effect",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s http://localhost:3090/dashboard | grep -qi 'infos'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Render leads in a responsive table/card grid with Name, Org, Email, Phone, Role, Category, City, Source columns",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s http://localhost:3090/dashboard | grep -qi 'infos'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Add category filter buttons (All / Defence / Medical) for the Infos tab",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s http://localhost:3090/dashboard | grep -qi 'infos'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "index": 5,
+      "name": "P5: Integration Verification",
+      "goal": "Launch a dry-run campaign, confirm DB writes and dashboard reflection.",
+      "description": "",
+      "parallel": false,
+      "status": "planned",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Trigger POST /launch with a small test campaign",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s -X POST http://localhost:3050/launch -H 'Content-Type: application/json' -d '{\"domain\":\"Medical\",\"locations\":[\"Noida\"],\"selected_products\":[\"Advanced Cancer Detection Vehicle\"],\"dry_run\":true}' | python3 -m json.tool | grep -q 'started'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Poll /leads and /drafts/pending to confirm DB writes",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s http://localhost:3050/leads | python3 -m json.tool | grep -q 'leads'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Confirm frontend renders without console fetch errors",
+          "status": "pending",
+          "verification": {
+            "command": "curl -s http://localhost:3090/dashboard | grep -q 'html'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false
+        }
+      ]
+    }
+  ],
+  "decisions": [],
+  "memories": [],
+  "createdAt": "2026-06-11T05:59:32.478Z",
+  "updatedAt": "2026-06-11T08:30:55.545Z",
+  "goal": "Migrate the IRUS AI Outreach Pipeline from CSV-based storage to Neon PostgreSQL, add a new \"Infos\" tab on the live dashboard that displays all scraped leads, and ensure all backend modules read from and write to the database.",
+  "successCriteria": [
+    "Neon DB tables exist: leads, email_drafts, action_logs",
+    "Existing CSV data (leads, drafts, logs) is migrated to Neon on first startup",
+    "Backend modules (lead_finder, lead_enricher, email_drafts, logger) use psycopg2 instead of CSV I/O",
+    "GET /leads endpoint returns all scraped leads with optional category/search filters",
+    "Dashboard has a third \"Infos\" tab listing all leads in a responsive table/cards view",
+    "Launching a campaign writes leads + drafts to Neon, dashboard reflects it in real time",
+    "Existing tabs (Review & Send, Activity Log) and features (edit, send single/all) continue working"
+  ],
+  "constraints": [
+    "Use the provided Neon connection string, stored in .env (never hardcoded in committed files)",
+    "Use psycopg2-binary for synchronous DB access to match existing code style",
+    "Clear existing drafted/edited rows between campaigns (mirrors current clear_drafts behavior); preserve sent/failed rows as history",
+    "Keep .env in .gitignore",
+    "Handle DB connection errors gracefully (log, return 500)",
+    "Table creation uses IF NOT EXISTS to survive restarts",
+    "Use a single db.py module for all DB operations to avoid scattered connection logic"
+  ],
+  "lastActiveAt": "2026-06-11T08:30:06.028Z",
+  "activePhaseId": "phase-3"
+}

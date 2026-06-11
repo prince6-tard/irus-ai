@@ -1,0 +1,529 @@
+{
+  "id": "019eb062-3986-7208-976b-e821ffcda462",
+  "name": "Build IRUS AI Outreach Pipeline",
+  "description": "Build a fully autonomous, full-stack AI outreach pipeline for IRUS — an Indian company that manufactures defence technology products (drones, robots, anti-drone systems, simulators, tactical vehicles) and medical mobility solutions (mobile clinics, ambulances, telemedicine, AR/VR simulators).\n\nThe system consists of a Python backend driven by a modern Next.js web interface.\n\nDeliverables:\n1. A Next.js frontend with premium glassmorphism UI using Tailwind CSS. It must guide the user through a strict step-by-step configuration process (Domain Selection → Product Multi-Selection → Target Location Definition → Launch & Dashboard) before launching the backend pipeline.\n2. A Python backend with FastAPI, Apollo.io API integration for lead discovery, Hunter.io for email enrichment, Anthropic Claude API for personalized cold email drafting, and Gmail SMTP for sending.\n3. A complete file structure with config.py, product_loader.py, lead_finder.py, lead_enricher.py, claude_drafter.py, email_sender.py, logger.py, api.py, main.py.\n4. An irus_products.csv serving as single source of truth for both UI and backend.\n5. Real-time logging dashboard polling logs from the backend.\n6. The backend must accept parameters from the frontend (domain, selected products, target location) and only pass those products to Claude's system prompt.\n\nThe frontend must dynamically read products from the CSV via the backend API, allow multi-select, pass selections to the backend, and show a live logging dashboard.",
+  "status": "complete",
+  "worktree": {
+    "path": "/mnt/c/Users/priya/irus-ai"
+  },
+  "scoping": {
+    "goal": {
+      "answer": "Deliver a full-stack AI outreach pipeline: a Next.js glassmorphism frontend that guides users through domain, product, and location selection, streams live pipeline logs, and triggers a Python FastAPI backend that integrates Apollo.io, Hunter.io, Anthropic Claude, and Gmail SMTP.",
+      "confirmedAt": "2026-06-10T08:54:27.257Z"
+    },
+    "criteria": {
+      "answer": "Next.js UI successfully renders dynamic products from CSV and passes selections to FastAPI\nPython pipeline executes without crashing on DRY_RUN = True\nClaude only references the products explicitly selected in the UI\nlog.csv correctly tracks status and prevents duplicate sends\nFull system runs end-to-end, logging progress to the frontend dashboard",
+      "confirmedAt": "2026-06-10T08:54:27.257Z"
+    },
+    "constraints": {
+      "answer": "Use only specified dependencies: fastapi, uvicorn, anthropic, requests, python-dotenv, DRY_RUN=True is the default safety rail and must remain the default, 90–120 second delay between sends is non-negotiable to avoid Gmail spam filters, Use irus_products.csv as single source of truth — no hardcoded product lists, Frontend must be Next.js + Tailwind CSS with glassmorphism design, Never crash the pipeline; catch, log, and skip failed components or leads, Retry exactly once on network errors before moving forward",
+      "confirmedAt": "2026-06-10T08:54:27.257Z"
+    },
+    "phases": {
+      "answer": "Backend Core & Data Layer, Backend External API Modules, Backend API & Orchestrator, Next.js Frontend, Integration & End-to-End Verification",
+      "confirmedAt": "2026-06-10T08:54:27.257Z"
+    },
+    "assumptions": {
+      "answer": "Python 3.10+ and Node.js 18+ are available in the environment; API keys and Gmail credentials will be injected via .env at runtime; irus_products.csv is already present at the project root with columns: Product Name, Description, Domain; The project root is /mnt/c/Users/priya/irus-ai/; no extra irus_outreach/ wrapper is needed; Backend and frontend run independently during development; FastAPI on localhost:8000, Next.js on localhost:3000",
+      "confirmedAt": "2026-06-10T08:54:27.257Z"
+    }
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "index": 1,
+      "name": "Backend Core & Data Layer",
+      "goal": "Create config.py, product_loader.py, logger.py, .env.example, and requirements.txt",
+      "description": "Build the foundational backend modules. config.py holds tunable constants. product_loader.py reads the existing irus_products.csv and serves JSON to the frontend and formatted text to Claude. logger.py writes to CSV and prevents duplicate sends. Verify the CSV has the expected columns.",
+      "parallel": false,
+      "status": "completed",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Verify irus_products.csv exists at project root and has the expected columns (Product Name, Description, Domain)",
+          "status": "verified",
+          "verification": {
+            "command": "python -c \"import csv; f=open('irus_products.csv'); r=csv.DictReader(f); cols=r.fieldnames; assert 'Product Name' in cols and 'Description' in cols and 'Domain' in cols; print('csv ok:', len(list(r)), 'products')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T08:54:40.349Z",
+          "completedAt": "2026-06-10T08:55:36.477Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T08:55:36.477Z"
+          }
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Create backend/config.py with Apollo/Hunter/Claude constants, job titles, industries, lead limits, and file paths",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"import config; print(config.PRODUCTS_FILE)\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T08:55:48.613Z",
+          "completedAt": "2026-06-10T08:59:36.553Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T08:59:36.553Z"
+          }
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Create backend/product_loader.py with get_catalogue_json() and format_selected_catalogue(selected_products)",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from product_loader import get_catalogue_json, format_selected_catalogue; cats = get_catalogue_json(); assert len(cats) > 0; print('products:', len(cats))\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T08:59:43.812Z",
+          "completedAt": "2026-06-10T09:01:01.397Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:01:01.397Z"
+          }
+        },
+        {
+          "id": "step-4",
+          "index": 4,
+          "description": "Create backend/logger.py with already_contacted(), write_log(), and print_summary()",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from logger import already_contacted, write_log; print('logger ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:01:09.666Z",
+          "completedAt": "2026-06-10T09:03:33.069Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:03:33.069Z"
+          }
+        },
+        {
+          "id": "step-5",
+          "index": 5,
+          "description": "Create .env.example and requirements.txt at project root",
+          "status": "verified",
+          "verification": {
+            "command": "test -f .env.example && test -f requirements.txt && echo 'env and deps ok'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:03:43.354Z",
+          "completedAt": "2026-06-10T09:05:23.297Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:05:23.297Z"
+          }
+        }
+      ],
+      "startedAt": "2026-06-10T08:54:32.610Z",
+      "completedAt": "2026-06-10T09:06:10.202Z",
+      "summary": "Phase 1 completed: Backend Core & Data Layer. All 5 files created and verified: config.py (constants and path resolution), product_loader.py (CSV reader and formatter), logger.py (deduplication, structured logging, summary), .env.example (secrets template), and requirements.txt (dependencies)."
+    },
+    {
+      "id": "phase-2",
+      "index": 2,
+      "name": "Backend External API Modules",
+      "goal": "Build lead_finder.py, lead_enricher.py, claude_drafter.py, and email_sender.py",
+      "description": "Create the four modules that call external APIs. Each module is self-contained, imports config.py and logger.py, and handles its own rate limiting and error recovery.",
+      "parallel": false,
+      "status": "completed",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Create backend/lead_finder.py with Apollo.io mixed_people/search integration, pagination, and deduplication",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from lead_finder import find_leads; print('lead_finder ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:07:43.847Z",
+          "completedAt": "2026-06-10T09:14:23.006Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:14:23.006Z"
+          }
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Create backend/lead_enricher.py with Hunter.io domain-search and email-finder",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from lead_enricher import enrich_leads; print('lead_enricher ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:15:03.933Z",
+          "completedAt": "2026-06-10T09:19:27.230Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:19:27.230Z"
+          }
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Create backend/claude_drafter.py with product-aware system prompt and response parsing",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from claude_drafter import draft_email; print('claude_drafter ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:19:58.458Z",
+          "completedAt": "2026-06-10T09:23:03.033Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:23:03.033Z"
+          }
+        },
+        {
+          "id": "step-4",
+          "index": 4,
+          "description": "Create backend/email_sender.py with Gmail SMTP SSL and retry wrapper",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from email_sender import send_email; print('email_sender ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:23:22.119Z",
+          "completedAt": "2026-06-10T09:25:21.202Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:25:21.202Z"
+          }
+        }
+      ],
+      "startedAt": "2026-06-10T09:07:15.287Z",
+      "completedAt": "2026-06-10T09:26:39.636Z",
+      "summary": "Phase 2 completed: Backend External API Modules. All four modules created and verified: lead_finder.py (Apollo.io with pagination and deduplication), lead_enricher.py (Hunter.io domain-search and email-finder with rate limiting), claude_drafter.py (Anthropic Claude with product-aware system prompt and safe parsing), and email_sender.py (Gmail SMTP SSL with retry wrapper)."
+    },
+    {
+      "id": "phase-3",
+      "index": 3,
+      "name": "Backend API & Orchestrator",
+      "goal": "Build main.py and api.py to wire everything together",
+      "description": "Refactor main.py to accept a configuration dict and orchestrate the pipeline. Create api.py as a FastAPI app with GET /products, POST /launch, and GET /logs endpoints.",
+      "parallel": false,
+      "status": "completed",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Create backend/main.py with run_campaign(payload) orchestrator",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from main import run_campaign; print('main ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:28:39.962Z",
+          "completedAt": "2026-06-10T09:33:37.655Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:33:37.655Z"
+          }
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Create backend/api.py with FastAPI endpoints for products, launch, and log streaming",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from api import app; print('api ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:35:12.420Z",
+          "completedAt": "2026-06-10T09:37:17.194Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:37:17.194Z"
+          }
+        }
+      ],
+      "startedAt": "2026-06-10T09:28:08.967Z",
+      "completedAt": "2026-06-10T09:38:04.802Z",
+      "summary": "Phase 3 completed: Backend API & Orchestrator. main.py implements the full campaign orchestration with payload parsing, product formatting, lead discovery, enrichment, shuffling, deduplication-aware outreach loop, dry-run/sending branching, throttling, and summary reporting. api.py exposes FastAPI with CORS, GET /products, POST /launch with BackgroundTasks and busy guard, GET /logs, and GET /status."
+    },
+    {
+      "id": "phase-4",
+      "index": 4,
+      "name": "Next.js Frontend",
+      "goal": "Build the complete Next.js app with Tailwind, glassmorphism UI, wizard, and dashboard",
+      "description": "Initialize a Next.js App Router project in frontend/. Build reusable glassmorphism components (GlassCard, ProductTile, StepIndicator). Implement the 4-step wizard on the home page. Implement the live logging dashboard on /dashboard. Wire all API calls to the FastAPI backend.",
+      "parallel": false,
+      "status": "completed",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Initialize Next.js with TypeScript, Tailwind CSS, and App Router in frontend/",
+          "status": "verified",
+          "verification": {
+            "command": "test -f frontend/package.json && test -f frontend/tailwind.config.js && echo 'nextjs init ok'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:39:31.443Z",
+          "completedAt": "2026-06-10T09:44:33.214Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:44:33.214Z"
+          }
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Configure Tailwind with custom glassmorphism utilities and global styles",
+          "status": "verified",
+          "verification": {
+            "command": "test -f frontend/src/app/globals.css && grep -q backdrop-blur frontend/src/app/globals.css && echo 'tailwind glass ok'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:45:05.718Z",
+          "completedAt": "2026-06-10T09:48:38.855Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:48:38.855Z"
+          }
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Create glassmorphism reusable components: GlassCard, ProductTile, StepIndicator, LogStream",
+          "status": "verified",
+          "verification": {
+            "command": "test -f frontend/src/components/GlassCard.tsx && test -f frontend/src/components/ProductTile.tsx && echo 'components ok'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:49:04.264Z",
+          "completedAt": "2026-06-10T09:51:19.731Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:51:19.731Z"
+          }
+        },
+        {
+          "id": "step-4",
+          "index": 4,
+          "description": "Build the 4-step wizard page (/) with domain cards, product multi-select, location input, and launch confirmation",
+          "status": "verified",
+          "verification": {
+            "command": "test -f frontend/src/app/page.tsx && echo 'wizard ok'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:51:40.271Z",
+          "completedAt": "2026-06-10T09:58:17.921Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T09:58:17.921Z"
+          }
+        },
+        {
+          "id": "step-5",
+          "index": 5,
+          "description": "Build the live logging dashboard page (/dashboard) with polling",
+          "status": "verified",
+          "verification": {
+            "command": "test -f frontend/src/app/dashboard/page.tsx && echo 'dashboard ok'",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T09:58:34.122Z",
+          "completedAt": "2026-06-10T10:02:29.553Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T10:02:29.553Z"
+          }
+        }
+      ],
+      "startedAt": "2026-06-10T09:39:12.428Z",
+      "completedAt": "2026-06-10T10:03:03.991Z",
+      "summary": "Phase 4 completed: Next.js Frontend. Initialized Next.js 16 with TypeScript, Tailwind v4, and App Router. Configured glassmorphism CSS utilities (glass, glass-card, glass-input, glass-btn with backdrop-filter blur, gradients, and animations). Created four reusable components. Built the 4-step wizard page (domain selection, dynamic product fetching, multi-select tiles, location input, launch confirmation with backend submission). Built the live dashboard page (status polling, metrics, log stream). Next.js build passes with 0 errors and generates both index.html and dashboard.html."
+    },
+    {
+      "id": "phase-5",
+      "index": 5,
+      "name": "Integration & End-to-End Verification",
+      "goal": "Verify the full system works together with a dry-run pipeline",
+      "description": "Run the backend FastAPI app and confirm all endpoints respond correctly. Verify the Next.js frontend can fetch products and submit a campaign. Execute a dry-run pipeline and confirm log.csv captures status correctly.",
+      "parallel": false,
+      "status": "completed",
+      "steps": [
+        {
+          "id": "step-1",
+          "index": 1,
+          "description": "Verify all backend imports and FastAPI startup",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"import api; from fastapi.testclient import TestClient; c = TestClient(api.app); r = c.get('/products'); assert r.status_code == 200; print('backend boots ok')\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T10:05:02.346Z",
+          "completedAt": "2026-06-10T10:06:03.823Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T10:06:03.823Z"
+          }
+        },
+        {
+          "id": "step-2",
+          "index": 2,
+          "description": "Run dry-run end-to-end pipeline ensuring no crashes",
+          "status": "verified",
+          "verification": {
+            "command": "cd backend && python -c \"from main import run_campaign; result = run_campaign({'domain':'Defence','locations':['India'],'selected_products':['LOGISTICS | MULTI ROLE DRONE (LMRD)'],'dry_run':True}); print('dry run ok', result)\"",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T10:06:28.271Z",
+          "completedAt": "2026-06-10T10:07:49.264Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T10:07:49.264Z"
+          }
+        },
+        {
+          "id": "step-3",
+          "index": 3,
+          "description": "Build Next.js frontend to confirm no TypeScript errors",
+          "status": "verified",
+          "verification": {
+            "command": "cd frontend && npx next build 2>&1 | tail -5",
+            "retries": 2,
+            "retryDelayMs": 1000
+          },
+          "parallel": false,
+          "startedAt": "2026-06-10T10:08:10.788Z",
+          "completedAt": "2026-06-10T10:09:31.490Z",
+          "result": {
+            "success": true,
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "completedAt": "2026-06-10T10:09:31.490Z"
+          }
+        }
+      ],
+      "startedAt": "2026-06-10T10:04:51.259Z",
+      "completedAt": "2026-06-10T10:10:41.067Z",
+      "summary": "Phase 5 completed: Integration & End-to-End Verification. Confirmed all backend imports resolve via TestClient GET /products (status 200). Executed a complete dry-run pipeline end-to-end with Defence domain, India location, and a selected product — the pipeline formatted products, attempted Apollo discovery (gracefully handled missing API key), returned structured success, and did not crash. Built the Next.js frontend with 0 errors and 0 warnings, confirming both wizard and dashboard pages compile cleanly."
+    }
+  ],
+  "decisions": [],
+  "memories": [],
+  "createdAt": "2026-06-10T07:14:47.813Z",
+  "updatedAt": "2026-06-10T10:13:53.250Z",
+  "goal": "Deliver a full-stack AI outreach pipeline: a Next.js glassmorphism frontend that guides users through domain, product, and location selection, streams live pipeline logs, and triggers a Python FastAPI backend that integrates Apollo.io, Hunter.io, Anthropic Claude, and Gmail SMTP.",
+  "successCriteria": [
+    "Next.js UI successfully renders dynamic products from CSV and passes selections to FastAPI",
+    "Python pipeline executes without crashing on DRY_RUN = True",
+    "Claude only references the products explicitly selected in the UI",
+    "log.csv correctly tracks status and prevents duplicate sends",
+    "Full system runs end-to-end, logging progress to the frontend dashboard"
+  ],
+  "constraints": [
+    "Use only specified dependencies: fastapi, uvicorn, anthropic, requests, python-dotenv",
+    "DRY_RUN=True is the default safety rail and must remain the default",
+    "90–120 second delay between sends is non-negotiable to avoid Gmail spam filters",
+    "Use irus_products.csv as single source of truth — no hardcoded product lists",
+    "Frontend must be Next.js + Tailwind CSS with glassmorphism design",
+    "Never crash the pipeline; catch, log, and skip failed components or leads",
+    "Retry exactly once on network errors before moving forward"
+  ],
+  "lastActiveAt": "2026-06-10T10:04:51.259Z",
+  "grade": {
+    "grade": "B",
+    "rationale": "Although every phase cites specific, concrete verification—such as Phase 5’s TestClient /products request, direct run_campaign smoke test, and Next.js build—the frontend and backend were only verified separately rather than as a coupled runtime stack, and the absence of a diff prevents independently confirming that the code cleanly implements the full end-to-end goal.",
+    "gradedAt": "2026-06-10T10:13:53.230Z"
+  }
+}

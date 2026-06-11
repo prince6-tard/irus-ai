@@ -1,0 +1,21 @@
+# Environment variables
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Node.js
+node_modules/
+.next/
+
+# Logs & generated data
+*.log
+log.csv
+leads_raw.csv
+leads_enriched.csv
