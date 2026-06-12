@@ -1,5 +1,6 @@
 # Environment variables
 .env
+.env.*
 
 # Python
 venv/
@@ -14,8 +15,21 @@ build/
 node_modules/
 .next/
 
-# Logs & generated data
+# Logs & runtime artifacts
 *.log
+*.pid
+*.err
+
+# Generated data / exports
+*.csv
+*.json
 log.csv
 leads_raw.csv
 leads_enriched.csv
+dental_referral_partners.json
+email_drafts.csv
+irus_products.csv
+
+# Local project tooling metadata
+.kimchi/
+

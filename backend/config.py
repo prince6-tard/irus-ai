@@ -54,3 +54,6 @@ LEADS_ENRICHED_FILE = os.path.join(PROJECT_ROOT, "leads_enriched.csv")
 LOG_FILE = os.path.join(PROJECT_ROOT, "log.csv")
 EMAIL_DRAFTS_FILE = os.path.join(PROJECT_ROOT, "email_drafts.csv")
 PRODUCTS_FILE = os.path.join(PROJECT_ROOT, "irus_products.csv")
+
+# ── Email CC ──────────────────────────────────────────────────────────────────
+CC_EMAIL = "abhinav@irus.ind.in"
