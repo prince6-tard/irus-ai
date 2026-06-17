@@ -151,7 +151,6 @@ def enrich_leads() -> list[dict]:
             email_source=lead.get("email_source"),
             has_phone=lead.get("has_phone"),
             notes=lead.get("notes"),
-            email=lead.get("email"),
         )
 
     print(f"Enriched {len(enriched)} leads")

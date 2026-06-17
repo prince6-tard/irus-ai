@@ -23,6 +23,25 @@ SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 HUNTER_API_KEY = os.getenv("HUNTER_API_KEY", "")
 SERPER_PLACES_URL = "https://google.serper.dev/places"
 
+# Common concatenated trailing words seen when scraping HTML text nodes
+_EMAIL_TRAILING_JUNK = re.compile(
+    r'^(.*@.*?\.(?:com|org|net|edu|gov|in|uk|io|co|us|ai|it|de|fr|jp|cn|br|ru))'
+    r'(request|saroj|address|contact|email|phone|call|visit|website|about|home|info|support|care|admin|sales|login|register|more|details|click|here|today|now|cyber|urban|rural|comwww|orgwww|netwww|comhttps|orghttps|page|link)$',
+    re.IGNORECASE,
+)
+
+
+def _normalize_email(email: str) -> str | None:
+    """Strip trailing HTML-scraping artifacts from an email address."""
+    email = email.strip().lower()
+    m = _EMAIL_TRAILING_JUNK.match(email)
+    if m:
+        return m.group(1)
+    # Also strip any trailing path-like or query-like garbage (e.g. .com/ → .com)
+    if '/' in email:
+        email = email.split('/', 1)[0]
+    return email
+
 
 def _serper_search(query: str, gl: str = "in", hl: str = "en") -> list[dict]:
     """Call Serper Places API to find organizations."""
@@ -82,9 +101,9 @@ def _scrape_website(website: str) -> dict:
                 continue
             text = BeautifulSoup(resp.text, "html.parser").get_text()
             phones = re.findall(r'(?:\+91[-\s]?)?[6-9]\d{9}|1800[-\s]\d{3}[-\s]\d{4}', text)
-            emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
-            emails = [re.split(r'[^a-zA-Z0-9._%+-@]', e)[0] for e in emails]  # strip trailing junk
-            emails = [e for e in emails if '@' in e and '.' in e.split('@')[-1] and not any(x in e.lower() for x in ["example", "noreply", "test", "support", "info@", "contact@", "care@"])]
+            emails = re.findall(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}\b', text)
+            emails = [_normalize_email(e) for e in emails]
+            emails = [e for e in emails if e and '@' in e and '.' in e.split('@')[-1] and not any(x in e.lower() for x in ["example", "noreply", "test", "support", "info@", "contact@", "care@"])]
             if phones or emails:
                 return {"phone": phones[0] if phones else "", "email": emails[0] if emails else ""}
         except Exception:
