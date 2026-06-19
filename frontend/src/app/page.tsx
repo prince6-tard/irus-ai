@@ -19,7 +19,7 @@ export default function Home() {
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [domain, setDomain] = useState<"Defence" | "Medical" | null>(null);
+  const [domain, setDomain] = useState<"Defence" | "Medical" | "Dental" | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [location, setLocation] = useState("");
@@ -105,7 +105,7 @@ export default function Home() {
           <h2 className="text-center text-lg font-semibold text-white/90 mb-6">
             Select your target domain
           </h2>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <GlassCard
               onClick={() => {
                 setDomain("Defence");
@@ -143,6 +143,23 @@ export default function Home() {
               <div className="text-center">
                 <h3 className="text-lg font-bold text-white">Medical</h3>
                 <p className="mt-1 text-xs text-white/50 max-w-[16rem]">Mobile clinics, ambulances, telemedicine, AR/VR simulators</p>
+              </div>
+            </GlassCard>
+
+            <GlassCard
+              onClick={() => router.push("/dental")}
+              strong
+              className="flex flex-col items-center justify-center gap-4 py-14 hover:scale-[1.02]"
+            >
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#00E5CC]/10 border border-[#00E5CC]/20">
+                <svg className="h-8 w-8 text-[#00E5CC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9.75h.008v.008H8.25V9.75zm7.5 0h.008v.008h-.008V9.75z" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-white">Dental Connect</h3>
+                <p className="mt-1 text-xs text-white/50 max-w-[16rem]">Global Dental Tourism Outreach</p>
               </div>
             </GlassCard>
           </div>
